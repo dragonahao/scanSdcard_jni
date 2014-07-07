@@ -1,0 +1,53 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ScrollView
+	    android:id="@+id/scanResultDetailSv"
+	    android:layout_width="match_parent"
+	    android:layout_height="match_parent"
+	    android:layout_above="@+id/currentScannedFile">
+		<TextView
+		    android:id="@+id/scanResultDetailTv"
+		    android:layout_width="match_parent"
+		    android:layout_height="match_parent"/>
+    </ScrollView>
+    
+    <LinearLayout 
+        android:id="@+id/buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true">
+        <Button
+            android:id="@+id/scanBtn"
+            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:textSize="12sp"
+            android:layout_weight="2"
+            android:text="开始扫描"/>
+        <Button
+            android:id="@+id/clearBtn"
+            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:textSize="12sp"
+            android:layout_weight="2"
+            android:text="清除结果"/>
+     </LinearLayout>
+     
+     <EditText
+         android:id="@+id/scanPathEt"
+         android:hint="请输入扫描路径,默认/storage/sdcard1/"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_above="@+id/buttons"/>    
+     <TextView 
+         android:id="@+id/currentScannedFile"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:background="#ffffff"
+         android:textColor="#00ff00"
+         android:singleLine="true"
+         android:hint="这里将显示当前扫描到的文件"
+         android:layout_above="@+id/scanPathEt"/>    
+</RelativeLayout>
+
