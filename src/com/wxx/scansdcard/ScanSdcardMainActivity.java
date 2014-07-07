@@ -17,18 +17,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class ScanSdcardMainActivity extends Activity {
-	private static final String defaultScanPath = "/storage/sdcard1/";
+	//各种参数
 	private static final String TAG = "ScanSdcardMainActivity";
+	private static final String defaultScanPath = "/storage/sdcard1/";
 	private EditText pathEt;
 	private Button startScanBtn;
 	private Button clearBtn;
 	private TextView currentScannedFileTv;
 	private TextView scannedResultTv;
 	private boolean scanning;	
-	private boolean LocalDebug = true;
+	private boolean LocalDebug = false;
 	private String currentScannedFile = "";
 	private String allScannedFile = "";
+	private int count;
+	private long endTime;
+	private long startTime;
 	
+	//加载库
 	static{
 		System.loadLibrary("scan_jni");
 	}
@@ -41,6 +46,7 @@ public class ScanSdcardMainActivity extends Activity {
 		if(LocalDebug) Log.d(TAG,"onCreate");		
 	}
 	
+	//初始化UI
 	private void initViews(){
 		pathEt = (EditText) this.findViewById(R.id.scanPathEt);
 		startScanBtn = (Button) this.findViewById(R.id.scanBtn);
@@ -72,16 +78,30 @@ public class ScanSdcardMainActivity extends Activity {
 		});
 	}
 	
-	private void clearScreen(){
-		currentScannedFileTv.setText("");
-		scannedResultTv.setText("");		
-	}
-	
-	private void clearLocalVarible(){
+	//初始化变量
+	private void initLocalVarible(){
 		currentScannedFile = "";
 		allScannedFile = "";
+		count = 0;
+		endTime = 0;
+		startTime = 0;
+	}
+
+	//清屏
+	private void clearScreen(){
+		clearScreenHandler.sendEmptyMessage(0);
 	}
 	
+	//UI Handler
+	private Handler clearScreenHandler = new Handler(){
+		@Override
+		public void handleMessage(Message msg){
+			super.handleMessage(msg);
+			currentScannedFileTv.setText("");
+			scannedResultTv.setText("");
+		}
+	};
+		
 	private Handler updataCurrentScannedFileHandler = new Handler(){
 		@Override
 		public void handleMessage(Message msg){
@@ -95,7 +115,10 @@ public class ScanSdcardMainActivity extends Activity {
 		public void handleMessage(Message msg){
 			super.handleMessage(msg);
 			scannedResultTv.setText(allScannedFile);
-			clearLocalVarible();
+			int seconds = (int)( (endTime - startTime) / 1000 );
+			int milSeconds = (int)( (endTime - startTime) % 1000 );
+			currentScannedFileTv.setText("共扫描到 " + count + "个文件，耗时 " + seconds +" 秒  " + milSeconds + " 毫秒" );
+			initLocalVarible();
 		}
 	};
 
@@ -111,6 +134,54 @@ public class ScanSdcardMainActivity extends Activity {
 			}
 		}
 	};
+	
+	//记录扫描时间
+	private void recordStartTime(){
+		startTime = System.currentTimeMillis();
+	}
+
+	private void recordEndTime(){
+		endTime = System.currentTimeMillis();
+	}
+		
+	//检测用户输入
+	private boolean invalidateInput(){
+		if( ! TextUtils.isEmpty(pathEt.getText().toString()) 
+				&& !( new File( this.pathEt.getText().toString() ).exists() ) ){
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean sdcardError(){
+		if( !( new File( defaultScanPath ).exists() ) ){
+			return true;
+		}
+		return false;
+	}
+		
+	private void showScanningTips(){
+		showTipsHandler.sendEmptyMessage(0);		
+	}
+
+	private void showInvalidatePathTips(){
+		showTipsHandler.sendEmptyMessage(1);		
+	}
+
+	private void displayResult(){
+		updataDetailScannedFileHandler.sendEmptyMessage(0);
+	}
+	
+	//*****业务函数*****
+	//JNI回调Java函数
+	private void updateResult(String currentScannedFileName){
+		if(LocalDebug) Log.d(TAG,"JNI回调JAVA函数updateResult()");
+		currentScannedFile = currentScannedFileName;
+		String tempFile = currentScannedFile + "\n";
+		allScannedFile += tempFile;
+		updataCurrentScannedFileHandler.sendEmptyMessage(0);
+		count ++;
+	}
 	
 	private void startScan(){
 		new Thread(){
@@ -130,11 +201,11 @@ public class ScanSdcardMainActivity extends Activity {
 						showInvalidatePathTips();
 						scanning = false;
 					}
-					scanFile(defaultScanPath);
+					startScan(defaultScanPath);
 				//扫描指定路径
 				}else{
-					Log.d(TAG,"扫描指定路径");
-					scanFile(pathEt.getText().toString());
+					if(LocalDebug) Log.d(TAG,"扫描指定路径");
+					startScan(pathEt.getText().toString());
 				}
 				//显示所有扫描结果
 				displayResult();
@@ -144,40 +215,18 @@ public class ScanSdcardMainActivity extends Activity {
 		}.start();
 	}
 	
-	private boolean invalidateInput(){
-		if( ! TextUtils.isEmpty(pathEt.getText().toString()) 
-				&& !( new File( this.pathEt.getText().toString() ).exists() ) ){
-			return true;
-		}
-		return false;
+	//清屏
+	//初始化本次扫描变量
+	//记录开始扫描时间
+	//记录扫描结束时间
+	private void startScan(final String path){
+		clearScreen();
+		initLocalVarible();
+		recordStartTime();
+		scanFile(path);
+		recordEndTime();		
 	}
 	
-	private boolean sdcardError(){
-		if( !( new File( defaultScanPath ).exists() ) ){
-			return true;
-		}
-		return false;
-	}
-	
-	private void updateResult(String currentScannedFileName){
-		if(LocalDebug) Log.d(TAG,"JNI回调JAVA函数updateResult()");
-		currentScannedFile = currentScannedFileName;
-		String tempFile = currentScannedFile + "\n";
-		allScannedFile += tempFile;
-		updataCurrentScannedFileHandler.sendEmptyMessage(0);
-	}
-	
-	private void showScanningTips(){
-		showTipsHandler.sendEmptyMessage(0);		
-	}
-
-	private void showInvalidatePathTips(){
-		showTipsHandler.sendEmptyMessage(1);		
-	}
-
-	private void displayResult(){
-		updataDetailScannedFileHandler.sendEmptyMessage(0);
-	}
-	
+	//Native函数
 	private native final void scanFile(String defaultScanPath);
 }
